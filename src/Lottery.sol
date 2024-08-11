@@ -171,6 +171,9 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return s_lotteryState;
     }
 
+    function getSinglePlayer(uint256 index) public view returns (address payable) {
+        return s_players[index];
+    }
     function getPlayers() public view returns (address payable[] memory) {
         return s_players;
     }
