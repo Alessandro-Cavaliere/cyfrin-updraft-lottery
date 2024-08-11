@@ -55,6 +55,11 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     /// @param player The address of the player that won the lottery
     event WeHaveAWinner(address indexed player);
 
+    /// @notice This event is emitted when a request for a lottery winner is made
+    /// @dev This event is emitted when the contract requests random words from the Chainlink VRF service to determine the winner of the lottery
+    /// @param requestId The ID of the randomness request generated when `requestRandomWords` was called
+    event RequestedLotteryWinner(uint256 indexed requestId);
+
     /* Errors */
     error Lottery__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 lotteryState);
     error Lottery__IntervalNotPassed();
@@ -97,7 +102,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         require(upkeepNeeded,Lottery__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_lotteryState)));
         s_lotteryState = LotteryState.CALCULATING_WINNER;
         // Request random words from Chainlink VRF
-        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+        s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_keyHash,
                 subId: i_subscriptionID,
@@ -110,6 +115,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 )
             })
         );
+        emit RequestedLotteryWinner();
     }
 
     /// @notice Determines the winner of the lottery using a random number provided by Chainlink VRF.
