@@ -7,6 +7,12 @@ remappings = [
   '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/src/',
   '@solmate=lib/solmate/src'
 ]
+
+fs_permissions = [
+    { access = "read", path = "./broadcast" },
+    { access = "read", path = "./reports" },
+]
+
 via_ir = true
 
 [etherscan]
