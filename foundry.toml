@@ -4,7 +4,7 @@ out = "out"
 libs = ["lib"]
 solc = "0.8.26"
 remappings = [
-  '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/src/',
+  '@chainlink/contracts/=lib/chainlink-brownie-contracts/contracts/src/'
 ]
 via_ir = true
 
