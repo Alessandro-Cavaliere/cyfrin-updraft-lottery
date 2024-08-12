@@ -102,7 +102,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         require(upkeepNeeded,Lottery__UpkeepNotNeeded(address(this).balance, s_players.length, uint256(s_lotteryState)));
         s_lotteryState = LotteryState.CALCULATING_WINNER;
         // Request random words from Chainlink VRF
-        s_vrfCoordinator.requestRandomWords(
+        uint256 requestID = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: i_keyHash,
                 subId: i_subscriptionID,
@@ -111,11 +111,11 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 numWords: NUM_WORDS,
                 extraArgs: VRFV2PlusClient._argsToBytes(
                     // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: true})
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
                 )
             })
         );
-        emit RequestedLotteryWinner();
+        emit RequestedLotteryWinner(requestID);
     }
 
     /// @notice Determines the winner of the lottery using a random number provided by Chainlink VRF.
@@ -159,6 +159,10 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
     function getInterval() public view returns (uint256) {
         return i_interval;
+    }
+
+    function getRecentWinner() public view returns (address) {
+        return s_recentWinner;
     }
 
     function getKeyHash() public view returns (bytes32) {

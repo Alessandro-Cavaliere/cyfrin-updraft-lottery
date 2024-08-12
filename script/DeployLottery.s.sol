@@ -21,6 +21,7 @@ contract LotteryScript is Script {
             (config.subscriptionId, config.vrfCoordinatorV2_5) = subscriptionContract.createSubscription(config.vrfCoordinatorV2_5);
             FundSubscription fundSubscriptionContract = new FundSubscription();
             fundSubscriptionContract.fundSubscription(config.vrfCoordinatorV2_5, config.subscriptionId, config.link);
+           
         }
         console2.log("DeployLottery.s.sol: Deploying Lottery Smart Contract...");
         vm.startBroadcast();

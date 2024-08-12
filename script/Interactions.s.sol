@@ -63,12 +63,12 @@ contract FundSubscription is Script, CodeConstants, HelperConfigValues {
         if (block.chainid == LOCAL_CHAIN_ID) {
             console2.log("Interaction.s.sol: Funding Subscription on LOCAL CHAIN!");
             vm.startBroadcast();
-            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subID, FUND_AMOUNT);
+            VRFCoordinatorV2_5Mock(vrfCoordinator).fundSubscription(subID, FUND_AMOUNT *100);
             vm.stopBroadcast();
             console2.log("Interaction.s.sol: Subscription Funded!");
         } else {
             vm.startBroadcast();
-            LinkToken(linkToken).transferAndCall(vrfCoordinator, FUND_AMOUNT, abi.encode(subID));
+            LinkToken(linkToken).transferAndCall(vrfCoordinator, FUND_AMOUNT * 100, abi.encode(subID));
             vm.stopBroadcast();
         }
     }

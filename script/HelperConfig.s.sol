@@ -36,7 +36,7 @@ contract HelperConfig is CodeConstants, Script {
         uint32 callbackGasLimit;
         address vrfCoordinatorV2_5;
         address link;
-        // address account;
+        address account;
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ contract HelperConfig is CodeConstants, Script {
             callbackGasLimit: 500000, // 500,000 gas
             vrfCoordinatorV2_5: 0x271682DEB8C4E0901D1a1550aD2e64D568E69909,
             link: 0x514910771AF9Ca656af840dff83E8264EcF986CA
-            // account: 0x643315C9Be056cDEA171F4e7b2222a4ddaB9F88D
+            //account: 0x643315C9Be056cDEA171F4e7b2222a4ddaB9F88D
         });
     }
 

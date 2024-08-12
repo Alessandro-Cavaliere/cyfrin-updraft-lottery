@@ -2,9 +2,11 @@
 pragma solidity ^0.8.13;
 
 import {Test, console2} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {Lottery} from "../../src/Lottery.sol";
 import {LotteryScript} from "../../script/DeployLottery.s.sol";
 import {HelperConfig} from "../../script/HelperConfig.s.sol";
+import {VRFCoordinatorV2_5Mock} from "@chainlink/contracts/v0.8/vrf/mocks/VRFCoordinatorV2_5Mock.sol";
 
 contract LotteryTest is Test {
     Lottery public lottery;
@@ -25,6 +27,21 @@ contract LotteryTest is Test {
 
     error LotteryTest__NotOpenLottery();
 
+    modifier lotteryEntered() {
+        vm.prank(player);
+        lottery.enterLottery{value: lotteryEntranceFee}();
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
+        vm.roll(block.number + 1);
+        _;
+    }
+
+    modifier skipFork() {
+        if (block.chainid != 31337) {
+            return;
+        }
+        _;
+    }
+
     function setUp() public {
         LotteryScript deployer = new LotteryScript();
         (lottery, helperConfig) = deployer.deployLottery();
@@ -38,23 +55,18 @@ contract LotteryTest is Test {
         vrfCoordinatorV2_5 = config.vrfCoordinatorV2_5;
         link = config.link;
         vm.deal(player, STARTING_PLAYER_BALANCE);
-        console2.log("DeployLottery.s.sol:  vm.deal(player, STARTING_PLAYER_BALANCE) -> Fake User Funded! Balance: ",player.balance);
-        // account = config.account;
+        console2.log("DeployLottery.s.sol:  vm.deal(player, STARTING_PLAYER_BALANCE) -> Fake User Funded! Balance: ", player.balance);
     }
 
     /*//////////////////////////////////////////////////////////////
                              START OF TESTS
     //////////////////////////////////////////////////////////////*/
 
-                            //----------------//
-
-    /*//////////////////////////////////////////////////////////////
-                             ENTER LOTTERY TESTS
-    //////////////////////////////////////////////////////////////*/
     function testLotteryInitializedOpenState() public {
         require(lottery.getLotteryState() == Lottery.LotteryState.OPEN, LotteryTest__NotOpenLottery());
     }
-    function testETHBalanceToEnterLottery () public{
+
+    function testETHBalanceToEnterLottery() public {
         testLotteryInitializedOpenState();
         vm.prank(player);
         vm.expectRevert(Lottery.Lottery__NotEnoughtETHToEnterlottery.selector);
@@ -70,19 +82,13 @@ contract LotteryTest is Test {
 
     function testEventIsEmitted() public {
         vm.prank(player);
-        vm.expectEmit(true,false,false,false,address(lottery));
+        vm.expectEmit(true, false, false, false, address(lottery));
         emit LotteryEnter(player);
 
         lottery.enterLottery{value: lotteryEntranceFee}();
     }
 
-    function testDontAllowUserToEnterTheLotteryDuringCalculation() public {
-        vm.prank(player);
-        lottery.enterLottery{value: lotteryEntranceFee}();
-
-        vm.warp(block.timestamp + automationUpdateInterval +1);
-        vm.roll(block.number + 1);
-
+    function testDontAllowUserToEnterTheLotteryDuringCalculation() public lotteryEntered {
         lottery.performUpkeep("");
 
         vm.expectRevert(Lottery.Lottery__NotOpenLottery.selector);
@@ -93,8 +99,9 @@ contract LotteryTest is Test {
     /*//////////////////////////////////////////////////////////////
                              CHECK UPKEEPS
     //////////////////////////////////////////////////////////////*/
+
     function testCheckUpkeepIfItHasNoBalance() public {
-        vm.warp(block.timestamp + automationUpdateInterval +1);
+        vm.warp(block.timestamp + automationUpdateInterval + 1);
         vm.roll(block.number + 1);
 
         (bool upkeepNeeded, ) = lottery.checkUpkeep("");
@@ -116,13 +123,7 @@ contract LotteryTest is Test {
         assertFalse(upkeepNeeded, "Upkeep should not be needed when players array is empty");
     }
 
-    function testCheckUpkeepIfLotteryIsClosed() public {
-        vm.prank(player);
-        lottery.enterLottery{value: lotteryEntranceFee}();
-
-        vm.warp(block.timestamp + automationUpdateInterval +1);
-        vm.roll(block.number + 1);
-
+    function testCheckUpkeepIfLotteryIsClosed() public lotteryEntered {
         lottery.performUpkeep("");
         (bool upkeepNeeded, ) = lottery.checkUpkeep("");
         assert(!upkeepNeeded);
@@ -132,13 +133,7 @@ contract LotteryTest is Test {
                              PERFORM UPKEEPS
     //////////////////////////////////////////////////////////////*/
 
-    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public {
-        vm.prank(player);
-        lottery.enterLottery{value: lotteryEntranceFee}();
-
-        vm.warp(block.timestamp + automationUpdateInterval +1);
-        vm.roll(block.number + 1);
-
+    function testPerformUpkeepCanOnlyRunIfCheckUpkeepIsTrue() public lotteryEntered {
         lottery.performUpkeep("");
     }
 
@@ -148,29 +143,62 @@ contract LotteryTest is Test {
 
         Lottery.LotteryState lotteryState = lottery.getLotteryState();
         vm.expectRevert(
-            abi.encodeWithSelector(Lottery.Lottery__UpkeepNotNeeded.selector, currentBalance, numPlayers, rState)
+            abi.encodeWithSelector(Lottery.Lottery__UpkeepNotNeeded.selector, currentBalance, numPlayers, lotteryState)
         );
 
-        raffle.performUpkeep("");
+        lottery.performUpkeep("");
     }
 
-    function testPerformUpkeepUpdatesRaffleStateAndEmitsRequestId() public {
-        vm.prank(player);
-        lottery.enterLottery{value: LotteryEntranceFee}();
-        vm.warp(block.timestamp + automationUpdateInterval + 1);
-        vm.roll(block.number + 1);
-
-        // Act
+    function testPerformUpkeepUpdateslotteryStateAndEmitsRequestId() public lotteryEntered {
         vm.recordLogs();
-        raffle.performUpkeep(""); // emits requestId
+        lottery.performUpkeep(""); // emits requestId
         Vm.Log[] memory entries = vm.getRecordedLogs();
         bytes32 requestId = entries[1].topics[1];
 
-        // Assert
-        Raffle.RaffleState raffleState = raffle.getRaffleState();
-        // requestId = raffle.getLastRequestId();
+        Lottery.LotteryState lotteryState = lottery.getLotteryState();
         assert(uint256(requestId) > 0);
-        assert(uint256(raffleState) == 1); // 0 = open, 1 = calculating
+        assert(uint256(lotteryState) == 1); // 0 = open, 1 = calculating
+    }
+    
+    // This test will run 100 times due to the settings in `foundry.toml` file
+     function testFulfillRandomWordsCanOnlyBeCalledAfterPerformUpkeep(uint256 randomRequestID) public lotteryEntered skipFork {
+        vm.expectRevert(VRFCoordinatorV2_5Mock.InvalidRequest.selector);
+        VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fulfillRandomWords(randomRequestID, address(lottery));
+    }
+
+    function testFulfillRandomWordsPicksAWinnerResetsAndSendsMoney() public lotteryEntered skipFork {
+        uint256 additionalEntrants = 3;
+        uint256 startingIndex = 1;
+        address expectedWinner = address(1);
+        for (uint256 i = startingIndex; i < startingIndex + additionalEntrants; i++) {
+            address player = address(uint160(i)); //This code will convert the uint to an address
+            hoax(player, 1 ether); 
+            lottery.enterLottery{value: lotteryEntranceFee}();
+        }
+
+        uint256 startingtimestamp = lottery.getLastTimestamp();
+        uint256 expectedWinnerBalance = expectedWinner.balance;
+
+        vm.recordLogs();
+        lottery.performUpkeep("");
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        console2.logBytes32(entries[1].topics[1]);
+        bytes32 requestId = entries[1].topics[1]; 
+
+        VRFCoordinatorV2_5Mock(vrfCoordinatorV2_5).fulfillRandomWords(uint256(requestId), address(lottery));
+
+        address recentWinner = lottery.getRecentWinner();
+        Lottery.LotteryState lotteryState = lottery.getLotteryState();
+        console2.log("Recent Winner Balance Post WIN: ", recentWinner.balance);
+        uint256 endingTimestamp = lottery.getLastTimestamp();
+        uint256 prize = lotteryEntranceFee * (additionalEntrants + 1);
+    
+        assert(recentWinner == expectedWinner && 
+                expectedWinnerBalance + prize == recentWinner.balance && 
+                uint256(lotteryState) == 0 && 
+                startingtimestamp < endingTimestamp
+        );
+
     }
 
 }
