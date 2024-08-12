@@ -15,13 +15,18 @@ import {AutomationCompatibleInterface} from "@chainlink/contracts/v0.8/automatio
 /// @dev The project is set-upped with Foundry Tools
 contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
 
-    /* Type Declarations */
+    /*//////////////////////////////////////////////////////////////
+                           TYPE DECLARATIONS
+    //////////////////////////////////////////////////////////////*/
     enum LotteryState {
         OPEN,
         CALCULATING_WINNER
     }
     
-    /* State Variables */
+    /*//////////////////////////////////////////////////////////////
+                            STATE VARIABLES
+    //////////////////////////////////////////////////////////////*/
+
     /// @dev constant variables used in the contract
     uint16 private constant REQUEST_CONFIRMATION = 3;
     uint32 private constant NUM_WORDS = 2;
@@ -44,7 +49,10 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     address private s_recentWinner;
     ///
 
-    /* Events */
+    /*//////////////////////////////////////////////////////////////
+                                 EVENTS
+    //////////////////////////////////////////////////////////////*/
+
     /// @notice This Event shows when a player enters the lottery
     /// @dev This event is emitted when a player enters the lottery
     /// @param player The address of the player that entered the lottery
@@ -60,13 +68,18 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
     /// @param requestId The ID of the randomness request generated when `requestRandomWords` was called
     event RequestedLotteryWinner(uint256 indexed requestId);
 
-    /* Errors */
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
     error Lottery__UpkeepNotNeeded(uint256 currentBalance, uint256 numPlayers, uint256 lotteryState);
     error Lottery__IntervalNotPassed();
     error Lottery__NotEnoughtETHToEnterlottery();
     error Lottery__TransferFailed();
     error Lottery__NotOpenLottery();
 
+    /*//////////////////////////////////////////////////////////////
+                              CONSTRUCTOR
+    //////////////////////////////////////////////////////////////*/
     constructor(
         uint256 entranceFee,
         uint256 interval,
@@ -83,6 +96,10 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         s_lastTimestamp = block.timestamp;
         s_lotteryState = LotteryState.OPEN;
     }
+
+    /*//////////////////////////////////////////////////////////////
+                           START OF FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     /// @notice this function allows a player to enter the lottery
     /// @dev This function allows a player to enter the lottery by paying the entrance fee
@@ -111,7 +128,7 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
                 numWords: NUM_WORDS,
                 extraArgs: VRFV2PlusClient._argsToBytes(
                     // Set nativePayment to true to pay for VRF requests with Sepolia ETH instead of LINK
-                    VRFV2PlusClient.ExtraArgsV1({nativePayment: false})
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: true})
                 )
             })
         );
@@ -137,6 +154,10 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         require(success, Lottery__TransferFailed());
     }
 
+    /// @notice This function checks if the upkeep is needed
+    /// @dev This function checks if the upkeep is needed by verifying if the interval has passed since the last lottery selection,
+    /// @param -checkData- The data used to check if the upkeep is needed (not used in this contract)
+    /// @return upkeepNeeded A boolean value indicating if the upkeep is needed
     function checkUpkeep(bytes memory /* checkData */ )
         public
         view
@@ -151,12 +172,16 @@ contract Lottery is VRFConsumerBaseV2Plus, AutomationCompatibleInterface {
         return (upkeepNeeded,"");
     }
 
+    /// @notice This function is called to perform the upkeep
+    /// @dev This function is called to perform the upkeep by selecting the winner of the lottery, it is overridden from the AutomationCompatibleInterface
+    /// @param -performData- The data used to perform the upkeep (not used in this contract)
     function performUpkeep(bytes calldata /* performData */) external override {
         pickWinner();
     }
 
-    /* Getters */
-
+    /*//////////////////////////////////////////////////////////////
+                                GETTERS
+    //////////////////////////////////////////////////////////////*/
     function getInterval() public view returns (uint256) {
         return i_interval;
     }

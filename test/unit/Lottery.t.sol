@@ -62,8 +62,10 @@ contract LotteryTest is Test {
                              START OF TESTS
     //////////////////////////////////////////////////////////////*/
 
-    function testLotteryInitializedOpenState() public {
-        require(lottery.getLotteryState() == Lottery.LotteryState.OPEN, LotteryTest__NotOpenLottery());
+    function testLotteryInitializedOpenState() public view {
+        if (lottery.getLotteryState() != Lottery.LotteryState.OPEN) {
+            revert LotteryTest__NotOpenLottery();
+        }
     }
 
     function testETHBalanceToEnterLottery() public {
@@ -108,7 +110,7 @@ contract LotteryTest is Test {
         assert(!upkeepNeeded);
     }
 
-    function testCheckUpkeepIfIntervalNotPassed() public {
+    function testCheckUpkeepIfIntervalNotPassed() public{
         vm.prank(player);
         lottery.enterLottery{value: lotteryEntranceFee}();
 
@@ -116,7 +118,7 @@ contract LotteryTest is Test {
         assert(!upkeepNeeded);
     }
 
-    function testCheckUpkeepIfIsThereNoPlayers() public {
+    function testCheckUpkeepIfIsThereNoPlayers() public{
         address payable[] memory players = lottery.getPlayers();
         assertEq(players.length, 0, "Players array should be empty");
         (bool upkeepNeeded, ) = lottery.checkUpkeep("");
@@ -171,8 +173,8 @@ contract LotteryTest is Test {
         uint256 startingIndex = 1;
         address expectedWinner = address(1);
         for (uint256 i = startingIndex; i < startingIndex + additionalEntrants; i++) {
-            address player = address(uint160(i)); //This code will convert the uint to an address
-            hoax(player, 1 ether); 
+            address cuurentPlayer = address(uint160(i)); //This code will convert the uint to an address
+            hoax(cuurentPlayer, 1 ether); 
             lottery.enterLottery{value: lotteryEntranceFee}();
         }
 

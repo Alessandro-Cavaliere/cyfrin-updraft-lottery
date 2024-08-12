@@ -11,6 +11,9 @@ contract LotteryScript is Script {
         return deployLottery();
     }
 
+    /// @notice Deploy a new Lottery Smart Contract
+    /// @dev This function deploys a new Lottery Smart Contract and also create a new subscription ID and fund the subscription for local testing
+    /// @return Lottery - The deployed Lottery Smart Contract and HelperConfig - The HelperConfig contract
     function deployLottery() public returns (Lottery, HelperConfig) {
         HelperConfig helperConfig = new HelperConfig(); // This comes with our mocks!
         HelperConfig.NetworkConfig memory config = helperConfig.getConfig();
@@ -18,13 +21,13 @@ contract LotteryScript is Script {
         if(config.subscriptionId == 0) {
             console2.log("DeployLottery.s.sol: config.subscriptionId is = 0 -> We need to create a new subscription ID");
             CreateSubscription subscriptionContract = new CreateSubscription();
-            (config.subscriptionId, config.vrfCoordinatorV2_5) = subscriptionContract.createSubscription(config.vrfCoordinatorV2_5);
+            (config.subscriptionId, config.vrfCoordinatorV2_5) = subscriptionContract.createSubscription(config.vrfCoordinatorV2_5, config.account);
             FundSubscription fundSubscriptionContract = new FundSubscription();
-            fundSubscriptionContract.fundSubscription(config.vrfCoordinatorV2_5, config.subscriptionId, config.link);
+            fundSubscriptionContract.fundSubscription(config.vrfCoordinatorV2_5, config.subscriptionId, config.link, config.account);
            
         }
         console2.log("DeployLottery.s.sol: Deploying Lottery Smart Contract...");
-        vm.startBroadcast();
+        vm.startBroadcast(config.account);
         Lottery lottery = new Lottery(
             config.lotteryEntranceFee,
             config.automationUpdateInterval,
@@ -35,9 +38,8 @@ contract LotteryScript is Script {
         );
         vm.stopBroadcast();
         console2.log("DeployLottery.s.sol: Lottery Smart Contract has been deployed!! -> Address: ",address(lottery));
-        //addconsumer() just have vm.broadcast();
         AddConsumer consumerContract = new AddConsumer();
-        consumerContract.addConsumer(address(lottery), config.vrfCoordinatorV2_5, config.subscriptionId);
+        consumerContract.addConsumer(address(lottery), config.vrfCoordinatorV2_5, config.subscriptionId, config.account);
         return (lottery, helperConfig);
     }
 }
